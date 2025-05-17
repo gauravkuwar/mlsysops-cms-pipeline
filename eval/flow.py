@@ -201,17 +201,18 @@ def promote_to_staging_if_good():
 
 @flow(name="evaluation_flow")
 def evaluation_flow():
-    with mlflow.start_run(run_name="evaluation"):
-        model, tokenizer = load_model_and_tokenizer().result()
-        texts, labels = load_test_data().result()
-        acc = run_evaluation(model, tokenizer, texts, labels).result()
-        slice_pass = run_slice_eval(model, tokenizer).result()
-        fail_pass = run_failure_mode_eval(model, tokenizer).result()
-        template_pass = run_template_tests(model, tokenizer).result()
-        checks_ok = all_checks_pass(acc, slice_pass, fail_pass, template_pass).result()
+    with mlflow.start_run(run_name="offline-evaluation"):
+        model, tokenizer = load_model_and_tokenizer()
+        texts, labels = load_test_data()
+        acc = run_evaluation(model, tokenizer, texts, labels)
+        slice_pass = run_slice_eval(model, tokenizer)
+        fail_pass = run_failure_mode_eval(model, tokenizer)
+        template_pass = run_template_tests(model, tokenizer)
+        checks_ok = all_checks_pass(acc, slice_pass, fail_pass, template_pass)
+
         version = None
         if checks_ok:
-            version = promote_to_staging_if_good(acc).result()
+            version = promote_to_staging_if_good()
         return version
 
 if __name__ == "__main__":
