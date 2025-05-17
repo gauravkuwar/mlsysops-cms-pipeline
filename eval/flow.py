@@ -11,7 +11,7 @@ ALIAS = "development"
 STAGING_ACC_THRESHOLD = 0.80
 
 mock_config = {
-    "batch_size": 128,
+    "batch_size": 32,
     "max_len": 128,
     "model_name": "google/bert_uncased_L-2_H-128_A-2"
 }
@@ -182,12 +182,19 @@ def load_offline_eval_data():
 @task
 def run_evaluation(model, tokenizer, texts, labels) -> float:
     logger = get_run_logger()
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=mock_config["max_len"])
-    with torch.no_grad():
-        outputs = model(**inputs)
-        preds = outputs.logits.argmax(dim=1).tolist()
+    batch_size = mock_config["batch_size"]
+    all_preds = []
 
-    acc = accuracy_score(labels, preds)
+    model.eval()
+    for i in range(0, len(texts), batch_size):
+        batch_texts = texts[i:i + batch_size]
+        inputs = tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=mock_config["max_len"])
+        with torch.no_grad():
+            outputs = model(**inputs)
+            preds = outputs.logits.argmax(dim=1).tolist()
+            all_preds.extend(preds)
+
+    acc = accuracy_score(labels, all_preds)
     logger.info(f"Evaluation accuracy: {acc:.4f}")
     mlflow.log_metric("eval_accuracy", acc)
     return acc
