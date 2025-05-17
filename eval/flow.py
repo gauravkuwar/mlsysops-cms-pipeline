@@ -205,7 +205,7 @@ def promote_to_staging_if_good():
 def evaluation_flow():
     with mlflow.start_run(run_name="offline-evaluation"):
         model, tokenizer = load_model_and_tokenizer()
-        texts, labels = load_offline_eval_data()()
+        texts, labels = load_offline_eval_data()
         acc = run_evaluation(model, tokenizer, texts, labels)
         slice_pass = run_slice_eval(model, tokenizer)
         fail_pass = run_failure_mode_eval(model, tokenizer)
