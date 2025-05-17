@@ -4,6 +4,7 @@ from prefect import flow, task, get_run_logger
 from mlflow.tracking import MlflowClient
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sklearn.metrics import accuracy_score
+import pandas as pd
 
 MODEL_NAME = "mlsysops-cms-model"
 ALIAS = "development"
@@ -166,9 +167,10 @@ def all_checks_pass(acc: float, slice_pass: bool, fail_pass: bool, template_pass
     return True
 
 @task
-def load_test_data():
-    texts = ["you are amazing", "you are terrible"]
-    labels = [1, 0]
+def load_offline_eval_data():
+    df = pd.read_csv("/mnt/data/preprocessed/offline_eval.csv")
+    texts = df["comment_text"].tolist()
+    labels = (df["target"] >= 0.5).astype(int).tolist()
     return texts, labels
 
 @task
@@ -203,7 +205,7 @@ def promote_to_staging_if_good():
 def evaluation_flow():
     with mlflow.start_run(run_name="offline-evaluation"):
         model, tokenizer = load_model_and_tokenizer()
-        texts, labels = load_test_data()
+        texts, labels = load_offline_eval_data()()
         acc = run_evaluation(model, tokenizer, texts, labels)
         slice_pass = run_slice_eval(model, tokenizer)
         fail_pass = run_failure_mode_eval(model, tokenizer)
