@@ -36,17 +36,26 @@ def preprocess(kaggle_dir, output_dir, val_ratio, eval_ratio):
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"[ERROR] train.csv not found in {kaggle_dir}")
     
-    print(f"[INFO] Reading CSV from: {input_path}")
+    print(f"[INFO] Reading CSV in chunks from: {input_path}")
     start = time.time()
-    df = pd.read_csv(
+
+    chunks = pd.read_csv(
         input_path,
         usecols=["comment_text", "target"],
-        low_memory=False
+        low_memory=False,
+        chunksize=100_000
     )
-    print(f"[INFO] Loaded {len(df)} rows in {time.time() - start:.2f}s")
 
-    df.dropna(subset=["comment_text"], inplace=True)
-    print(f"[INFO] Rows remaining after dropping empty comments: {len(df)}")
+    filtered_chunks = []
+    total_rows = 0
+    for i, chunk in enumerate(chunks):
+        chunk.dropna(subset=["comment_text"], inplace=True)
+        filtered_chunks.append(chunk)
+        total_rows += len(chunk)
+        print(f"[INFO] Processed chunk {i + 1}, running total: {total_rows} rows")
+
+    df = pd.concat(filtered_chunks, ignore_index=True)
+    print(f"[INFO] Loaded {len(df)} filtered rows in {time.time() - start:.2f}s")
 
     print(f"[INFO] Splitting eval ({eval_ratio * 100:.1f}%)...")
     df, eval_df = train_test_split(df, test_size=eval_ratio, random_state=42)
