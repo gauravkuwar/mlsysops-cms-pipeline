@@ -176,7 +176,7 @@ def load_offline_eval_data():
 @task
 def run_evaluation(model, tokenizer, texts, labels) -> float:
     logger = get_run_logger()
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=tokenizer.model_max_length)
     with torch.no_grad():
         outputs = model(**inputs)
         preds = outputs.logits.argmax(dim=1).tolist()
