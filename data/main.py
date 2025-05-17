@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import zipfile
+import time
 
 os.environ["KAGGLE_CONFIG_DIR"] = os.path.abspath("/root/.kaggle")
 from kaggle.api.kaggle_api_extended import KaggleApi
@@ -32,14 +33,20 @@ def preprocess(kaggle_dir, output_dir, val_ratio, eval_ratio):
     os.makedirs(output_dir, exist_ok=True)
     input_path = os.path.join(kaggle_dir, "train.csv")
 
-    print(f"[INFO] Loading data from: {input_path}")
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"[ERROR] train.csv not found in {kaggle_dir}")
     
-    df = pd.read_csv(input_path).dropna(subset=["comment_text"])
-    print(f"[INFO] Loaded {len(df)} rows. Filtering columns...")
+    print(f"[INFO] Reading CSV from: {input_path}")
+    start = time.time()
+    df = pd.read_csv(
+        input_path,
+        usecols=["comment_text", "target"],
+        low_memory=False
+    )
+    print(f"[INFO] Loaded {len(df)} rows in {time.time() - start:.2f}s")
 
-    df = df[["comment_text", "target"]]
+    df.dropna(subset=["comment_text"], inplace=True)
+    print(f"[INFO] Rows remaining after dropping empty comments: {len(df)}")
 
     print(f"[INFO] Splitting eval ({eval_ratio * 100:.1f}%)...")
     df, eval_df = train_test_split(df, test_size=eval_ratio, random_state=42)
@@ -47,7 +54,7 @@ def preprocess(kaggle_dir, output_dir, val_ratio, eval_ratio):
     print(f"[INFO] Splitting val ({val_ratio * 100:.1f}%) from remaining data...")
     train_df, val_df = train_test_split(df, test_size=val_ratio / (1 - eval_ratio), random_state=42)
 
-    print(f"[INFO] Writing output to {output_dir}...")
+    print(f"[INFO] Writing preprocessed output to {output_dir}...")
     train_df.to_csv(os.path.join(output_dir, "train.csv"), index=False)
     val_df.to_csv(os.path.join(output_dir, "val.csv"), index=False)
     eval_df.to_csv(os.path.join(output_dir, "offline_eval.csv"), index=False)
