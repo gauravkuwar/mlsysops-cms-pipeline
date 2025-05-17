@@ -10,6 +10,12 @@ MODEL_NAME = "mlsysops-cms-model"
 ALIAS = "development"
 STAGING_ACC_THRESHOLD = 0.80
 
+mock_config = {
+    "batch_size": 128,
+    "max_len": 128,
+    "model_name": "google/bert_uncased_L-2_H-128_A-2"
+}
+
 @task
 def load_model_and_tokenizer():
     logger = get_run_logger()
@@ -18,7 +24,7 @@ def load_model_and_tokenizer():
     version_info = client.get_model_version_by_alias(MODEL_NAME, ALIAS)
     model_uri = f"models:/{MODEL_NAME}/{version_info.version}"
     model = mlflow.pytorch.load_model(model_uri)
-    tokenizer = AutoTokenizer.from_pretrained("google/bert_uncased_L-2_H-128_A-2")
+    tokenizer = AutoTokenizer.from_pretrained(mock_config["model_name"])
     model.eval()
     return model, tokenizer
 
@@ -176,7 +182,7 @@ def load_offline_eval_data():
 @task
 def run_evaluation(model, tokenizer, texts, labels) -> float:
     logger = get_run_logger()
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=tokenizer.model_max_length)
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=mock_config["max_len"])
     with torch.no_grad():
         outputs = model(**inputs)
         preds = outputs.logits.argmax(dim=1).tolist()
