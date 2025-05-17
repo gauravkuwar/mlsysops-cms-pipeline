@@ -183,11 +183,15 @@ def load_offline_eval_data():
 def run_evaluation(model, tokenizer, texts, labels) -> float:
     logger = get_run_logger()
     batch_size = mock_config["batch_size"]
+    total = len(texts)
     all_preds = []
 
     model.eval()
-    for i in range(0, len(texts), batch_size):
+    logger.info(f"Running evaluation in batches of {batch_size} over {total} samples")
+
+    for i in range(0, total, batch_size):
         batch_texts = texts[i:i + batch_size]
+        logger.info(f"Processing batch {i // batch_size + 1} ({i}–{min(i + batch_size, total)})")
         inputs = tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=mock_config["max_len"])
         with torch.no_grad():
             outputs = model(**inputs)
@@ -195,7 +199,7 @@ def run_evaluation(model, tokenizer, texts, labels) -> float:
             all_preds.extend(preds)
 
     acc = accuracy_score(labels, all_preds)
-    logger.info(f"Evaluation accuracy: {acc:.4f}")
+    logger.info(f"Final evaluation accuracy: {acc:.4f}")
     mlflow.log_metric("eval_accuracy", acc)
     return acc
 
